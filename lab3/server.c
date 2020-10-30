@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <winsock2.h>
+#include <string.h>
 
 int main(){
 
@@ -18,11 +19,16 @@ int main(){
         exit(-1);
     }
     //说明ws2_32.dll正确加载
-    printf("Load ws2_32.dll successfully!\n");
+    printf("Winsock启动...\n");
 
     //创建服务端套接字
     SOCKET serverSock;
-    serverSock = socket(AF_INET, SOCK_STREAM, 0);
+    int iSockErr = 0;
+    
+    // AF_INET，地址族，表示使用IP地址族
+    // SOCK_STREAM流套接字，使用tcp提供的有连接的可靠的传输 
+    serverSock = socket(AF_INET, SOCK_STREAM, 0);   
+ 
 
     //定义服务端地址结构,ip地址、端口
     SOCKADDR_IN serverAddr;
@@ -30,13 +36,24 @@ int main(){
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(serverPort);
-    serverAddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_addr.S_un.S_addr = inet_addr("192.168.43.98");
 
     //将套接字与服务器地址绑定
-    bind(serverSock, (SOCKADDR*)&serverAddr, sizeof(serverAddr));
+    iSockErr = bind(serverSock, (SOCKADDR*)&serverAddr, sizeof(serverAddr));
+    if (iSockErr==SOCKET_ERROR){
+	    WSAGetLastError();//根据不同的错误类型进行不同的处理
+	    return -1;
+    }
+
 
     //服务器启动监听
-    listen(serverSock, 5);
+    iSockErr = listen(serverSock, 5);
+    if(iSockErr!=0){
+	    printf("Listen failed:%d\n",WSAGetLastError());
+		exit(-4);
+    }
+    printf("启动监听: %d\n", ntohs(serverAddr.sin_port)); 
+    printf("等待客户端连接...\n");
 
     //接收请求
     SOCKET clientSock;     //客户端套接字socket
@@ -45,28 +62,34 @@ int main(){
     clientSock = accept(serverSock, (SOCKADDR*)&clientAddr, &clientAddrLen);
 
     //连接成功
-    printf("connect success\n");
-
+    printf("连接成功!\n");
+    printf("client ip is %s\n", inet_ntoa(clientAddr.sin_addr));
+    printf("client port is %d\n", ntohs(clientAddr.sin_port));
+    
     //发送或接收消息
     char sendBuff[256];
     char recvBuff[256];
+    int dataLen = 0;
     while(1){
-        memset(recvBuff, 0, sizeof(recvBuff));
-        recv(clientSock, recvBuff, sizeof(recvBuff), 0);
-        printf("接收的消息: %s\n", recvBuff);
+        recvBuff[0] = '\0';
+        dataLen = recv(clientSock, recvBuff, 256, 0);
+        recvBuff[dataLen] = '\0';
         if(strcmp(recvBuff, "quit") == 0)
             break;
-
+        printf("接收消息: %s\n", recvBuff);
+        
         //转换为大写
-        memset(sendBuff, 0, sizeof(sendBuff));
         int i; 
         for (i = 0; i < strlen(recvBuff); ++i) {
             sendBuff[i] = toupper(recvBuff[i]);
         }
+        sendBuff[i] = '\0';
 
         //返回客户端
-        send(clientSock, sendBuff, sizeof(sendBuff), 0);
-
+        printf("发送消息：%s\n",sendBuff);
+        send(clientSock, sendBuff, strlen(sendBuff), 0);
+        
+        printf("\n");
     }
 
     //关闭连接

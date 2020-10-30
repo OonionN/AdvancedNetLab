@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <winsock2.h>
+#include <string.h> 
 
 int main(){
     //Winsock启动
@@ -17,11 +18,11 @@ int main(){
         exit(-1);
     }
     //说明ws2_32.dll正确加载
-    printf("Load ws2_32.dll successfully!\n");
+    printf("Winsock启动...\n");
 
     //初始化要连接的服务端socket和地址
     SOCKET serverSock;
-    serverSock = socket(AF_INET, SOCK_STREAM, 0);
+    serverSock = socket(AF_INET, SOCK_STREAM, 0); 
     SOCKADDR_IN serverAddr;
     int serverPort = 3333;
     serverAddr.sin_family = AF_INET;
@@ -39,21 +40,27 @@ int main(){
             printf("close socket unsuccessful!\n");
         return -1;
     }
-    printf("connect success\n");
+    printf("连接成功!\n");
+    printf("server ip is %s\n", inet_ntoa(serverAddr.sin_addr));
+    printf("server port is %d\n", ntohs(serverAddr.sin_port));
 
     //发送或接收消息
     char sendBuff[256];
     char recvBuff[256];
+    int dataLen = 0;
     while(1){
-        memset(sendBuff, 0, sizeof(sendBuff));
+    	sendBuff[0] = '\0';
         printf("输入要发送的消息: ");
-        scanf("%s", sendBuff);
-        send(serverSock, sendBuff, sizeof(sendBuff), 0);
+        gets(sendBuff);
+        send(serverSock, sendBuff, strlen(sendBuff), 0);
         if(strcmp(sendBuff, "quit") == 0)
             break;
-        memset(recvBuff, 0, sizeof(recvBuff));
-        recv(serverSock, recvBuff, sizeof(recvBuff), 0);
-        printf("接收的消息: %s\n", recvBuff);
+            
+        recvBuff[0] = '\0';
+        dataLen = recv(serverSock, recvBuff, 256, 0);
+        recvBuff[dataLen] = '\0';
+        printf("接收消息: %s\n", recvBuff);
+        printf("\n");
     }
     
     //关闭连接
